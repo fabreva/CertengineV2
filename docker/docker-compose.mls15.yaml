@@ -1,0 +1,39 @@
+
+services:
+  anvil_certengine:
+    image: ghcr.io/foundry-rs/foundry:v1.3.6
+    container_name: anvil_certengine
+    restart: unless-stopped
+    user: "0:0"
+    entrypoint: ["/bin/sh", "/anvil-entrypoint.sh"]
+    command:
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8545"
+      - "--chain-id"
+      - "31337"
+      - "--mnemonic"
+      - "test test test test test test test test test test test junk"
+      - "--state"
+      - "/data"
+      - "--state-interval"
+      - "5"
+    ports:
+      - "127.0.0.1:8545:8545"
+    volumes:
+      - anvil_data:/data
+      - ./anvil-entrypoint.sh:/anvil-entrypoint.sh:ro
+    networks:
+      certengine_network:
+        aliases:
+          - anvil.local
+
+  certengine:
+    depends_on:
+      - mongo_certengine
+      - redis_certengine
+      - anvil_certengine
+
+volumes:
+  anvil_data: {}

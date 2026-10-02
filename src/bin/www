@@ -1,0 +1,127 @@
+#!/usr/bin/env node
+
+const app = require('../app');
+const http = require('http');
+const appLogger = require("../services/loggers/applogger");
+const { disconnectFromDbMongo, connectToDbMongo } = require("../connectors/mongoDBConnector");
+const { connectToRedis, disconnectFromRedis } = require("../connectors/redisConnector");
+const { checkBlockchainConnection } = require("../connectors/blockchainConnector");
+const {configurator} = require("../config");
+const {startCronJob} = require("../jobs/cronJobs");
+
+const startTime = process.hrtime.bigint();
+const port = normalizePort(process.env.CERT_ENGINE_PORT || '5001');
+app.set('port', port);
+
+const server = http.createServer(app);
+
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+function normalizePort(val) {
+  const port = parseInt(val, 10);
+  if (isNaN(port)) return val;
+  if (port >= 0) return port;
+  return false;
+}
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    appLogger.error({ error: error }, 'Error not related to listen');
+    throw error;
+  }
+
+  const bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;
+
+  switch (error.code) {
+    case 'EACCES':
+      appLogger.fatal(`${bind} requires elevated privileges`);
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      appLogger.fatal(`${bind} is already in use`);
+      process.exit(1);
+      break;
+    default:
+      appLogger.error({ error: error }, 'Server error');
+      throw error;
+  }
+}
+
+async function onListening() {
+  const addr = server.address();
+  const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
+
+  try {
+    await connectToDbMongo();
+    await connectToRedis();
+    await checkBlockchainConnection();
+
+    const apiKey = await configurator.getConfig("serviceApiKey");
+    if (!apiKey) {
+      appLogger.fatal({}, "SERVICE_API_KEY not configured: cannot start securely. Generate a secret (e.g. openssl rand -hex 32) and set it both here and in the calling backend.");
+      process.exit(1);
+    }
+
+    await startCronJob()
+
+    const uptime = Number(process.hrtime.bigint() - startTime) / 1e9;
+    appLogger.info(`Running on ${bind} - Boot time: ${uptime.toFixed(2)} s`);
+  } catch (err) {
+    appLogger.fatal({ error: err }, 'Failed to initialize connectors during startup');
+    process.exit(1);
+  }
+}
+
+async function cleanup() {
+  try {
+    await disconnectFromDbMongo();
+    await disconnectFromRedis();
+    appLogger.info('Cleanup completed successfully');
+  } catch (err) {
+    appLogger.error({ error: err }, 'Error during cleanup');
+  }
+}
+
+const shutdown = (signal) => {
+  appLogger.fatal({}, `Closing server due to ${signal}`);
+
+  const forceExit = setTimeout(() => {
+    appLogger.fatal({}, 'Forcing exit: cleanup timed out');
+    process.exit(1);
+  }, 10000);
+  forceExit.unref();
+
+  server.close(async () => {
+    await cleanup();
+    process.exit(0);
+  });
+};
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+process.on('uncaughtException', (err) => {
+  appLogger.fatal({ error: err }, 'Uncaught Exception detected');
+
+  const forceExit = setTimeout(() => process.exit(1), 5000);
+  forceExit.unref();
+
+  server.close(async () => {
+    await cleanup();
+    process.exit(1);
+  });
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  appLogger.error({ error: reason, promise: promise }, 'Unhandled Rejection detected');
+
+  const forceExit = setTimeout(() => process.exit(1), 5000);
+  forceExit.unref();
+
+  server.close(async () => {
+    await cleanup();
+    process.exit(1);
+  });
+});

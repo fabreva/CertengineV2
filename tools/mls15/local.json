@@ -1,0 +1,7 @@
+{
+  "gasPrice": {
+    "baseFee": 1,
+    "maxPriorityFeePerGas": 1,
+    "maxFeePerGas": 2
+  }
+}

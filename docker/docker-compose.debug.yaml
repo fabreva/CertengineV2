@@ -1,0 +1,23 @@
+services:
+
+  mongo_certengine:
+    ports:
+      - "127.0.0.1:27017:27017"
+
+  redis_certengine:
+    ports:
+      - "127.0.0.1:6379:6379"
+
+
+  certengine:
+    build:
+      context: ..
+      args:
+        NODE_ENV: development
+    container_name: certengine
+    ports:
+      - "127.0.0.1:5001:5001"
+    volumes:
+      - ../:/home/node/app
+      - /home/node/app/node_modules
+    command: npm run dev

@@ -1,0 +1,63 @@
+name: certengine
+
+services:
+
+  mongo_certengine:
+    image: mongo:7.0
+    container_name: mongo_certengine
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "${MONGO_ROOT_USER:-certengine}"
+      MONGO_INITDB_ROOT_PASSWORD: "${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD}"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - certengine_network
+
+  redis_certengine:
+    image: redis:7
+    container_name: redis_certengine
+    restart: always
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD}", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - certengine_network
+
+  certengine:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: certengine
+    restart: on-failure
+    env_file:
+      - ${ENV_FILE:-../src/.env}
+    expose:
+      - '5001'
+    # Default: published ONLY on the host's loopback (127.0.0.1), so a same-host
+    # backend running outside Docker can reach it, but it is NOT reachable from
+    # external networks. Override CERTENGINE_BIND to change this, e.g.:
+    #   - backend inside this Docker network: comment out the 'ports' block (use 'expose' only)
+    #   - backend on another host in a private network: CERTENGINE_BIND=10.0.0.5:5001
+    # Never bind on 0.0.0.0 if certengine is reachable from untrusted networks.
+    ports:
+      - "${CERTENGINE_BIND:-127.0.0.1:5001}:5001"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    depends_on:
+      - mongo_certengine
+      - redis_certengine
+    networks:
+      - certengine_network
+    command: npm start
+
+networks:
+  certengine_network:
+    external: true
+
+volumes:
+  mongo_data: {}
+  redis_data: {}

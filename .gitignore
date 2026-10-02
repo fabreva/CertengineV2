@@ -1,0 +1,32 @@
+# Dependency directories
+node_modules/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment variables
+*.env
+.env.local
+src/env.locale
+
+# IDE Files (WebStorm/VSCode)
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Hardhat
+artifacts/
+cache/
+
+# MLS1 gas reports
+test-gasERC/gas/reports/
+
+# MLS1.5 gas reports
+tools/mls15/reports/

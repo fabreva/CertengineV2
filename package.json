@@ -1,0 +1,46 @@
+{
+  "name": "certengine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node ./src/bin/www",
+    "dev": "nodemon ./src/bin/www",
+    "test": "LOG_LEVEL=silent mocha ./test/**/*.mjs --exit --timeout 10000",
+    "test:ERC:gas": "mocha ./test-gasERC/gas/*.mjs --exit --timeout 600000",
+    "service": "node scripts/start-engine.js remote",
+    "service:local": "node scripts/start-engine.js local",
+    "shutdown": "scripts\\shutdown.bat",
+    "py:gas": "py -3 tools/mls15/certengine_sim.py remote",
+    "py:gas:local": "py -3 tools/mls15/certengine_sim.py local"
+  },
+  "dependencies": {
+    "@infisical/sdk": "^4.0.4",
+    "axios": "^1.7.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-prometheus-middleware": "^1.2.0",
+    "express-validator": "^7.1.0",
+    "helmet": "^8.1.0",
+    "ioredis": "^5.4.1",
+    "mongoose": "^8.0.0",
+    "node-cron": "^3.0.3",
+    "pino": "^9.3.2",
+    "pino-http": "^10.2.0",
+    "pino-pretty": "^11.2.2",
+    "redlock": "^5.0.0-beta.2",
+    "response-time": "^2.3.2",
+    "web3": "^4.2.2"
+  },
+  "devDependencies": {
+    "@openzeppelin/contracts": "^5.6.1",
+    "chai": "4.2.0",
+    "cli-progress": "^3.12.0",
+    "hardhat": "^2.29.1",
+    "mocha": "^7.2.0",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.2.2"
+  }
+}
